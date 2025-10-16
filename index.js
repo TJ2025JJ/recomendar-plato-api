@@ -1,54 +1,64 @@
-const { Pool } = require('pg');
+// importar dependencias
+import express from "express";
+import pkg from "pg";
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // Render usará esta variable
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+dotenv.config();
 
-// index.js
-const express = require('express');
+const { Pool } = pkg;
 const app = express();
-const PORT = 8080;
+const port = process.env.PORT || 8080;
 
-// Middleware para interpretar JSON
-app.use(express.json());
+// permitir JSON
+app.use(bodyParser.json());
 
-// Ruta GET para probar si el servidor funciona
-app.get('/', (req, res) => {
-  res.send('✅ API de recomendación de platos funcionando');
+// conectar a la base de datos usando DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // necesario para Render
+  },
 });
 
-// Ruta POST para recomendar platos
-app.post('/recomendar', (req, res) => {
+// Ruta principal para verificar que el servidor funciona
+app.get("/", (req, res) => {
+  res.send("✅ API del Recomendador de Platos funcionando correctamente");
+});
+
+// Ejemplo de ruta para guardar una preferencia en la base de datos
+app.post("/guardar", async (req, res) => {
   const { nombre, preferencia } = req.body;
 
-  if (!nombre || !preferencia) {
-    return res.status(400).json({ error: 'Faltan datos en la solicitud' });
+  try {
+    const query = "INSERT INTO usuarios (nombre, preferencia) VALUES ($1, $2)";
+    await pool.query(query, [nombre, preferencia]);
+    res.json({ mensaje: "Datos guardados correctamente" });
+  } catch (error) {
+    console.error("Error al guardar:", error);
+    res.status(500).json({ error: "Error al guardar en la base de datos" });
   }
+});
 
-  let recomendacion;
-  switch (preferencia.toLowerCase()) {
-    case 'pollo':
-      recomendacion = 'Chaufa de pollo 🍛';
-      break;
-    case 'carne':
-      recomendacion = 'Aeropuerto especial 🥩';
-      break;
-    case 'pescado':
-      recomendacion = 'Tallarín saltado con pescado 🐟';
-      break;
-    default:
-      recomendacion = 'Arroz chaufa clásico 🍚';
+// ejemplo de recomendación simple
+app.post("/", (req, res) => {
+  const { nombre, preferencia } = req.body;
+  let recomendacion = "";
+
+  if (preferencia.toLowerCase().includes("pollo")) {
+    recomendacion = "Arroz chaufa de pollo";
+  } else if (preferencia.toLowerCase().includes("cerdo")) {
+    recomendacion = "Tallarines saltados con cerdo";
+  } else {
+    recomendacion = "Aeropuerto especial del chifa";
   }
 
   res.json({
-    mensaje: `Hola ${nombre}, te recomiendo: ${recomendacion}`
+    mensaje: `Hola ${nombre}, te recomendamos: ${recomendacion}`,
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
+// iniciar servidor
+app.listen(port, () => {
+  console.log(`Servidor escuchando en el puerto ${port}`);
 });
