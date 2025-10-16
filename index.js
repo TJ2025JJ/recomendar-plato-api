@@ -1,3 +1,12 @@
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // Render usará esta variable
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
 // index.js
 const express = require('express');
 const app = express();
